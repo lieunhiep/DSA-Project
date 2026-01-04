@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-#include <string>
 #include <fstream>
 #include <queue>
 #include <algorithm>
@@ -16,7 +15,7 @@
 
 using namespace std;
 
-/* ================= RAM ================= */
+/* ================= TÍNH RAM KHẢ DỤNG ================= */
 long long getAvailableRAM() {
 #ifdef _WIN32
     MEMORYSTATUSEX status;
@@ -38,21 +37,28 @@ long long getAvailableRAM() {
 #endif
 }
 
-/* ================= HEAPSORT (GIỮ NGUYÊN) ================= */
-void heapify(vector<string>& arr, int n, int i) {
-    int largest = i, l = 2*i + 1, r = 2*i + 2;
+/* ================= HEAP SORT ================= */
+void heapify(vector<int>& arr, int n, int i) {
+    int largest = i;
+    int l = 2 * i + 1;
+    int r = 2 * i + 2;
+
     if (l < n && arr[l] > arr[largest]) largest = l;
     if (r < n && arr[r] > arr[largest]) largest = r;
+
     if (largest != i) {
         swap(arr[i], arr[largest]);
         heapify(arr, n, largest);
     }
 }
 
-void heapSort(vector<string>& arr) {
+void heapSort(vector<int>& arr) {
     int n = arr.size();
-    for (int i = n/2 - 1; i >= 0; i--) heapify(arr, n, i);
-    for (int i = n-1; i > 0; i--) {
+
+    for (int i = n / 2 - 1; i >= 0; i--)
+        heapify(arr, n, i);
+
+    for (int i = n - 1; i > 0; i--) {
         swap(arr[0], arr[i]);
         heapify(arr, i, 0);
     }
@@ -60,10 +66,10 @@ void heapSort(vector<string>& arr) {
 
 /* ================= MERGE ================= */
 struct Node {
-    string data;
+    int value;
     int idx;
     bool operator>(const Node& other) const {
-        return data > other.data;
+        return value > other.value;
     }
 };
 
@@ -74,18 +80,19 @@ string mergeBatch(const vector<string>& files, int pass, int batch) {
 
     for (int i = 0; i < files.size(); i++) {
         streams[i].open(files[i]);
-        string s;
-        if (getline(streams[i], s)) {
-            pq.push({s, i});
+        int x;
+        if (streams[i] >> x) {
+            pq.push({x, i});
         }
     }
 
     ofstream out(outName);
     while (!pq.empty()) {
-        auto n = pq.top(); pq.pop();
-        out << n.data << '\n';
-        string next;
-        if (getline(streams[n.idx], next)) {
+        Node n = pq.top(); pq.pop();
+        out << n.value << '\n';
+
+        int next;
+        if (streams[n.idx] >> next) {
             pq.push({next, n.idx});
         }
     }
@@ -98,26 +105,27 @@ string mergeBatch(const vector<string>& files, int pass, int batch) {
 void sortBigFile(const string& inFile, const string& outFile) {
     long long freeRAM = getAvailableRAM();
     long long ramLimit = (long long)(freeRAM * 0.7);
-    
-    cout << "Available RAM: " << freeRAM / (1024 * 1024) << " MB" << endl;
-    cout << "Sorting buffer: " << ramLimit / (1024 * 1024) << " MB" << endl;
-    
+
+    cout << "Available RAM: " << freeRAM / (1024 * 1024) << " MB\n";
+    cout << "Sorting buffer: " << ramLimit / (1024 * 1024) << " MB\n";
+
     ifstream in(inFile);
-    vector<string> buffer;
+    vector<int> buffer;
     vector<string> runs;
+
     long long used = 0;
     int runId = 0;
-    string line;
+    int x;
 
-    while (getline(in, line)) {
-        buffer.push_back(line);
-        used += sizeof(string) + line.capacity();
+    while (in >> x) {
+        buffer.push_back(x);
+        used += sizeof(int);
 
         if (used >= ramLimit) {
             heapSort(buffer);
             string name = "run_" + to_string(runId++) + ".txt";
             ofstream out(name);
-            for (auto& s : buffer) out << s << '\n';
+            for (int v : buffer) out << v << '\n';
             runs.push_back(name);
             buffer.clear();
             used = 0;
@@ -128,7 +136,7 @@ void sortBigFile(const string& inFile, const string& outFile) {
         heapSort(buffer);
         string name = "run_" + to_string(runId++) + ".txt";
         ofstream out(name);
-        for (auto& s : buffer) out << s << '\n';
+        for (int v : buffer) out << v << '\n';
         runs.push_back(name);
     }
 
