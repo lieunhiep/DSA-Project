@@ -15,7 +15,7 @@
 
 using namespace std;
 
-/* ================= TÍNH RAM KHẢ DỤNG ================= */
+/* ================= RAM ================= */
 long long getAvailableRAM() {
 #ifdef _WIN32
     MEMORYSTATUSEX status;
@@ -37,7 +37,7 @@ long long getAvailableRAM() {
 #endif
 }
 
-/* ================= HEAP SORT ================= */
+/* ================= HEAP SORT (GIỮ NGUYÊN) ================= */
 void heapify(vector<int>& arr, int n, int i) {
     int largest = i;
     int l = 2 * i + 1;
@@ -106,29 +106,33 @@ void sortBigFile(const string& inFile, const string& outFile) {
     long long freeRAM = getAvailableRAM();
     long long ramLimit = (long long)(freeRAM * 0.7);
 
+    const size_t BYTES_PER_INT = 12;
+    size_t maxElements = ramLimit / BYTES_PER_INT;
+
     cout << "Available RAM: " << freeRAM / (1024 * 1024) << " MB\n";
-    cout << "Sorting buffer: " << ramLimit / (1024 * 1024) << " MB\n";
+    cout << "Max elements in memory: " << maxElements << "\n";
 
     ifstream in(inFile);
     vector<int> buffer;
-    vector<string> runs;
+    buffer.reserve(maxElements);
 
-    long long used = 0;
+    vector<string> runs;
     int runId = 0;
     int x;
 
     while (in >> x) {
         buffer.push_back(x);
-        used += sizeof(int);
 
-        if (used >= ramLimit) {
+        if (buffer.size() >= maxElements) {
             heapSort(buffer);
+
             string name = "run_" + to_string(runId++) + ".txt";
             ofstream out(name);
-            for (int v : buffer) out << v << '\n';
+            for (int v : buffer)
+                out << v << '\n';
+
             runs.push_back(name);
             buffer.clear();
-            used = 0;
         }
     }
 
@@ -136,12 +140,13 @@ void sortBigFile(const string& inFile, const string& outFile) {
         heapSort(buffer);
         string name = "run_" + to_string(runId++) + ".txt";
         ofstream out(name);
-        for (int v : buffer) out << v << '\n';
+        for (int v : buffer)
+            out << v << '\n';
         runs.push_back(name);
     }
 
-    /* ===== MULTI-PASS MERGE ===== */
-    const int MAX_OPEN = 100;
+    // ===== MULTI-PASS MERGE =====
+    const int MAX_OPEN = 32;
     int pass = 0;
 
     while (runs.size() > 1) {
